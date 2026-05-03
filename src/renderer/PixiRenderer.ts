@@ -23,8 +23,8 @@ export interface WorldState {
     food: FoodData[]
 }
 
-const WORLD_WIDTH = 3200
-const WORLD_HEIGHT = 2400
+const WORLD_WIDTH = 25600
+const WORLD_HEIGHT = 19200
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 3
 const ENERGY_MAX = 250
