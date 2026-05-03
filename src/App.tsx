@@ -1,11 +1,13 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { PixiRenderer, WorldState } from "./renderer/PixiRenderer"
+import StatsPanel from "./components/StatsPanel"
 
 const WS_URL = "wss://universe-engine.onrender.com"
 
 export default function App() {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const rendererRef = useRef<PixiRenderer | null>(null)
+    const [worldState, setWorldState] = useState<WorldState | null>(null)
 
     useEffect(() => {
         if (!canvasRef.current) return
@@ -22,6 +24,7 @@ export default function App() {
         ws.onmessage = (event) => {
             const state: WorldState = JSON.parse(event.data)
             renderer.update(state)
+            setWorldState(state)
         }
 
         const handleResize = () => renderer.resize()
@@ -34,9 +37,12 @@ export default function App() {
     }, [])
     
     return (
-        <canvas
-            ref={canvasRef}
-            style={{ display: "block", width: "100vw", height: "100vh" }}
-        />
+        <>
+            <canvas
+                ref={canvasRef}
+                style={{ display: "block", width: "100vw", height: "100vh" }}
+            />
+            <StatsPanel state={worldState} />
+        </>
     )
 }
