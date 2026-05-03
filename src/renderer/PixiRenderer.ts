@@ -5,6 +5,11 @@ export interface EntityData {
     x: number
     y: number
     energy: number
+    dna: {
+        speed: number
+        visionRadius: number
+        reproductionThreshold: number
+    } | null
 }
 
 export interface FoodData {
@@ -157,15 +162,26 @@ export class PixiRenderer {
         this.worldContainer.y = pivotY - worldY * this.scale
     }
 
-    private getEnergyColor(energy: number): number {
-        if (energy > 150) return 0x1d9e75
-        if (energy > 80) return 0xef9f27
-        return 0x7f77dd
+    private getDNAColor(dna: EntityData["dna"], energy: number): number {
+        if (!dna) return 0x1d9e75
+        
+        // normaliza cada atributo pra range 0-255
+        const r = Math.min(255, Math.floor((dna.speed / 200) * 255))
+        const g = Math.min(255, Math.floor((dna.visionRadius / 700) * 255))
+        const b = Math.min(255, Math.floor((dna.reproductionThreshold / 210) * 255))
+
+        // escurece proporcionalmente à falta de energia
+        const energyFactor = Math.max(0.3, energy / 250)
+        const fr = Math.floor(r * energyFactor)
+        const fg = Math.floor(g * energyFactor)
+        const fb = Math.floor(b * energyFactor)
+
+        return (fr << 16) | (fg << 8) | fb
     }
 
-    private buildEntitySprite(energy: number): PIXI.Container {
+    private buildEntitySprite(energy: number, dna: EntityData["dna"]): PIXI.Container {
         const container = new PIXI.Container()
-        const color = this.getEnergyColor(energy)
+        const color = this.getDNAColor(dna, energy)
         const dark = 0x0a0a0f
         const g = new PIXI.Graphics()
 
@@ -246,7 +262,7 @@ export class PixiRenderer {
                 // reconstrói o sprite se a energia mudou o suficiente
                 if (energyChanged) {
                     this.worldContainer.removeChild(container)
-                    const newContainer = this.buildEntitySprite(e.energy)
+                    const newContainer = this.buildEntitySprite(e.energy, e.dna)
                     newContainer.x = e.x
                     newContainer.y = e.y
                     this.worldContainer.addChild(newContainer)
@@ -254,7 +270,7 @@ export class PixiRenderer {
                     this.entityEnergy.set(e.id, e.energy)
                 }
             } else {
-                const container = this.buildEntitySprite(e.energy)
+                const container = this.buildEntitySprite(e.energy, e.dna)
                 container.x = e.x
                 container.y = e.y
                 this.worldContainer.addChild(container)
