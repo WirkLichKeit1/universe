@@ -39,6 +39,8 @@ export class PixiRenderer {
     private dragging: boolean = false
     private dragStart: { x: number; y: number } = { x: 0, y: 0 }
     private containerStart: { x: number; y: number } = { x: 0, y: 0 }
+    private followingId: number | null = null
+    private onFollowChange?: (id: number | null) => void
 
     constructor(canvas: HTMLCanvasElement) {
         this.app = new PIXI.Application({
@@ -59,14 +61,35 @@ export class PixiRenderer {
         this.setupControls(canvas)
     }
 
+    setOnFollowChange(cb: (id: number | null) => void): void {
+        this.onFollowChange = cb
+    }
+
+    followCreature(id: number | null): void {
+        this.followingId = id
+        this.onFollowChange?.(id)
+    }
+
+    private centerOn(x: number, y: number): void {
+        this.worldContainer.x = window.innerWidth / 2 - x * this.scale
+        this.worldContainer.y = window.innerHeight / 2 - y * this.scale
+    }
+
     private fitWorld(): void {
-        const scaleX = window.innerWidth / WORLD_WIDTH
-        const scaleY = window.innerHeight / WORLD_HEIGHT
-        this.scale = Math.min(scaleX, scaleY) * 0.9
+        const viewWidth = 4000
+        const viewHeight = 3000
+
+        this.scale = Math.min(
+            window.innerWidth / viewWidth,
+            window.innerHeight / viewHeight
+        )
+
+        const worldCenterX = WORLD_WIDTH / 2
+        const worldCenterY = WORLD_HEIGHT / 2
 
         this.worldContainer.scale.set(this.scale)
-        this.worldContainer.x = (window.innerWidth - WORLD_WIDTH * this.scale) / 2
-        this.worldContainer.y = (window.innerHeight - WORLD_HEIGHT * this.scale) / 2
+        this.worldContainer.x = window.innerWidth / 2 - worldCenterX * this.scale
+        this.worldContainer.y = window.innerHeight / 2 - worldCenterY * this.scale
     }
 
     private drawWorldBorder(): void {
@@ -150,6 +173,30 @@ export class PixiRenderer {
         canvas.addEventListener("touchend", () => {
             this.dragging = false
         })
+
+        canvas.addEventListener("click", (e) => {
+            if (this.dragging) return
+
+            // converte coordenada do clique pra coordenada do mundo
+            const worldX = (e.clientX - this.worldContainer.x) / this.scale
+            const worldY = (e.clientY - this.worldContainer.y) / this.scale
+
+            // procura criatura mais próxima do clique (raio de 30 unidades do mundo)
+            let closest: number | null = null
+            let closestDist = 600
+
+            this.entitySprites.forEach((sprite, id) => {
+                const dx = sprite.x - worldX
+                const dy = sprite.y - worldY
+                const dist = Math.sqrt(dx * dx + dy * dy)
+                if (dist < closestDist) {
+                    closestDist = dist
+                    closest = id
+                }
+            })
+
+            this.followCreature(closest)
+        })
     }
 
     private applyZoom(factor: number, pivotX: number, pivotY: number): void {
@@ -163,19 +210,15 @@ export class PixiRenderer {
     }
 
     private getDNAColor(dna: EntityData["dna"], energy: number): number {
-        if (!dna) return 0x1d9e75
-        
-        // normaliza cada atributo pra range 0-255
-        const r = Math.min(255, Math.floor((dna.speed / 200) * 255))
-        const g = Math.min(255, Math.floor((dna.visionRadius / 700) * 255))
-        const b = Math.min(255, Math.floor((dna.reproductionThreshold / 210) * 255))
+        const r = dna ? Math.min(255, Math.floor((dna.speed / 300) * 255)) : 29
+        const g = dna ? Math.min(255, Math.floor((dna.visionRadius / 3500) * 255)) : 158
+        const b = dna ? Math.min(255, Math.floor((dna.reproductionThreshold / 210) * 255)) : 117
 
-        // escurece proporcionalmente à falta de energia
         const energyFactor = Math.max(0.3, energy / 250)
-        const fr = Math.floor(r * energyFactor)
-        const fg = Math.floor(g * energyFactor)
-        const fb = Math.floor(b * energyFactor)
-
+        const fr = Math.max(0, Math.min(255, Math.floor(r * energyFactor)))
+        const fg = Math.max(0, Math.min(255, Math.floor(g * energyFactor)))
+        const fb = Math.max(0, Math.min(255, Math.floor(b * energyFactor)))
+        
         return (fr << 16) | (fg << 8) | fb
     }
 
@@ -232,6 +275,16 @@ export class PixiRenderer {
     }
 
     update(state: WorldState): void {
+        if (this.followingId !== null) {
+            const entity = state.entities.find(e => e.id === this.followingId)
+            if (entity) {
+                this.centerOn(entity.x, entity.y)
+            } else {
+                this.followingId = null
+                this.onFollowChange?.(null)
+            }
+        }
+        
         const activeEntityIds = new Set(state.entities.map(e => e.id))
         const activeFoodIds = new Set(state.food.map(f => f.id))
 
