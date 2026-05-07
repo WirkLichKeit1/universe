@@ -115,8 +115,12 @@ export class PixiRenderer {
 
         canvas.addEventListener("mousemove", (e) => {
             if (!this.dragging) return
-            this.worldContainer.x = this.containerStart.x + (e.clientX - this.dragStart.x)
-            this.worldContainer.y = this.containerStart.y + (e.clientY - this.dragStart.y)
+
+            const dx = e.clientX - this.dragStart.x
+            const dy = e.clientY - this.dragStart.y
+            if (Math.sqrt(dx * dx + dy * dy) < 4) return // threshold pra não se mover em cliques
+            this.worldContainer.x = this.containerStart.x + dx
+            this.worldContainer.y = this.containerStart.y + dy
         })
 
         canvas.addEventListener("mouseup", () => {
