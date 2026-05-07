@@ -70,6 +70,15 @@ export class PixiRenderer {
         this.onFollowChange?.(id)
     }
 
+    getCameraRect(): { x: number; y: number; w: number; h: number } {
+        return {
+            x: -this.worldContainer.x / this.scale,
+            y: -this.worldContainer.y / this.scale,
+            w: window.innerWidth / this.scale,
+            h: window.innerHeight / this.scale,
+        }
+    }
+
     private centerOn(x: number, y: number): void {
         this.worldContainer.x = window.innerWidth / 2 - x * this.scale
         this.worldContainer.y = window.innerHeight / 2 - y * this.scale

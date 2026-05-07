@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { PixiRenderer, WorldState } from "./renderer/PixiRenderer"
 import StatsPanel from "./components/StatsPanel"
+import MinimapPanel from "./components/MinimapPanel"
 
 const WS_URL = "wss://universe-engine.onrender.com"
 
@@ -9,6 +10,7 @@ export default function App() {
     const rendererRef = useRef<PixiRenderer | null>(null)
     const [worldState, setWorldState] = useState<WorldState | null>(null)
     const [followingId, setFollowingId] = useState<number | null>(null)
+    const [fertileRegions, setFertileRegions] = useState<{ x: number, y: number }[]>([])
 
     useEffect(() => {
         if (!canvasRef.current) return
@@ -24,7 +26,15 @@ export default function App() {
         ws.onerror = (e) => console.error("Erro WebSocket:", e)
 
         ws.onmessage = (event) => {
-            const state: WorldState = JSON.parse(event.data)
+            const msg = JSON.parse(event.data)
+
+            if (msg.type === "init") {
+                setFertileRegions(msg.fertileRegions)
+                return
+            }
+
+            // type === "state"
+            const state: WorldState = msg
             renderer.update(state)
             setWorldState(state)
         }
@@ -37,6 +47,11 @@ export default function App() {
             window.removeEventListener("resize", handleResize)
         }
     }, [])
+
+    const getCameraRect = () => {
+        if (!rendererRef.current) return { x: 0, y: 0, w: 25600, h: 19200 }
+        return rendererRef.current.getCameraRect()
+    }
     
     return (
         <>
@@ -45,6 +60,12 @@ export default function App() {
                 style={{ display: "block", width: "100vw", height: "100vh" }}
             />
             <StatsPanel state={worldState} />
+            <MinimapPanel
+                state={worldState}
+                fertileRegions={fertileRegions}
+                cameraRect={getCameraRect()}
+            />
+            
             {followingId !== null && (
                 <div style={{
                     position: "fixed",
