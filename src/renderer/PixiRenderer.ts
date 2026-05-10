@@ -21,6 +21,7 @@ export interface FoodData {
 export interface WorldState {
     entities: EntityData[]
     food: FoodData[]
+    reproductionEvents: { x: number; y: number }[]
 }
 
 const WORLD_WIDTH = 25600
@@ -34,6 +35,7 @@ export class PixiRenderer {
     private entitySprites: Map<number, PIXI.Container> = new Map()
     private entityEnergy: Map<number, number> = new Map()
     private foodSprites: Map<number, PIXI.Graphics> = new Map()
+    private pulses: { g: PIXI.Graphics; x: number; y: number; age: number }[] = []
     private worldContainer: PIXI.Container
     private scale: number = 1
     private dragging: boolean = false
@@ -59,6 +61,10 @@ export class PixiRenderer {
         this.fitWorld()
         this.drawWorldBorder()
         this.setupControls(canvas)
+        
+        this.app.ticker.add((delta) => {
+            this.updatePulses(delta)
+        })
     }
 
     setOnFollowChange(cb: (id: number | null) => void): void {
@@ -357,6 +363,40 @@ export class PixiRenderer {
                 this.foodSprites.set(f.id, g)
             }
         })
+    }
+
+    private updatePulses(delta: number): void {
+        const duration = 40 // frames
+        this.pulses = this.pulses.filter(p => {
+            p.age += delta
+            const progress = p.age / duration
+            if (progress >= 1) {
+                this.worldContainer.removeChild(p.g)
+                p.g.destroy()
+                return false
+            }
+
+            const radius = progress * 120
+            const alpha = (1 - progress) * 0.7
+
+            p.g.clear()
+            p.g.lineStyle(2, 0xff69b4, alpha)
+            p.g.drawCircle(0, 0, radius)
+
+            // brilho interno mais rosados
+            p.g.lineStyle(1, 0xffb6c1, alpha * 0.5)
+            p.g.drawCircle(0, 0, radius * 0.6)
+
+            return true
+        })
+    }
+
+    triggerReproductionPulse(x: number, y: number): void {
+        const g = new PIXI.Graphics()
+        g.x = x
+        g.y = y
+        this.worldContainer.addChild(g)
+        this.pulses.push({ g, x, y, age: 0 })
     }
 
     resize(): void {
