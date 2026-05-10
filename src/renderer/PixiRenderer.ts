@@ -363,6 +363,10 @@ export class PixiRenderer {
                 this.foodSprites.set(f.id, g)
             }
         })
+
+        state.reproductionEvents?.forEach(event => {
+            this.triggerReproductionPulse(event.x, event.y)
+        })
     }
 
     private updatePulses(delta: number): void {
