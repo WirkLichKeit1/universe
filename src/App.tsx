@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { PixiRenderer, WorldState } from "./renderer/PixiRenderer"
 import StatsPanel from "./components/StatsPanel"
 import MinimapPanel from "./components/MinimapPanel"
+import { BiomeCell } from "./renderer/PixiRenderer"
 
 const WS_URL = "wss://universe-engine.onrender.com"
 
@@ -11,6 +12,7 @@ export default function App() {
     const [worldState, setWorldState] = useState<WorldState | null>(null)
     const [followingId, setFollowingId] = useState<number | null>(null)
     const [fertileRegions, setFertileRegions] = useState<{ x: number, y: number }[]>([])
+    const [biomeCells, setBiomeCells] = useState<BiomeCell[]>([])
 
     useEffect(() => {
         if (!canvasRef.current) return
@@ -30,6 +32,7 @@ export default function App() {
 
             if (msg.type === "init") {
                 setFertileRegions(msg.fertileRegions)
+                setBiomeCells(msg.biomeCells)
                 return
             }
 
@@ -47,6 +50,12 @@ export default function App() {
             window.removeEventListener("resize", handleResize)
         }
     }, [])
+
+    useEffect(() => {
+        if (rendererRef.current && biomeCells.length > 0) {
+            rendererRef.current.setBiomeMap(biomeCells)
+        }
+    }, [biomeCells])
 
     const getCameraRect = () => {
         if (!rendererRef.current) return { x: 0, y: 0, w: 25600, h: 19200 }

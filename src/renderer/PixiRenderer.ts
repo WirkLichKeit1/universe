@@ -24,6 +24,19 @@ export interface WorldState {
     reproductionEvents: { x: number; y: number }[]
 }
 
+export interface BiomeCell {
+    x: number
+    y: number
+    type: "prairie" | "forest" | "desert" | "swamp"
+}
+
+const BIOME_COLORS: Record<string, number> = {
+    prairie: 0x2d4a1e,
+    forest: 0x1a3a0f,
+    desert: 0x8a6a2a,
+    swamp: 0x2a3a2a,
+}
+
 const WORLD_WIDTH = 25600
 const WORLD_HEIGHT = 19200
 const MIN_ZOOM = 0.1
@@ -43,6 +56,7 @@ export class PixiRenderer {
     private containerStart: { x: number; y: number } = { x: 0, y: 0 }
     private followingId: number | null = null
     private onFollowChange?: (id: number | null) => void
+    private biomeBackground: PIXI.Graphics = new PIXI.Graphics()
 
     constructor(canvas: HTMLCanvasElement) {
         this.app = new PIXI.Application({
@@ -60,11 +74,45 @@ export class PixiRenderer {
 
         this.fitWorld()
         this.drawWorldBorder()
+        this.worldContainer.addChildAt(this.biomeBackground, 0)
         this.setupControls(canvas)
         
         this.app.ticker.add((delta) => {
             this.updatePulses(delta)
         })
+    }
+
+    setBiomeMap(cells: BiomeCell[]): void {
+        const TILE = 400 // resolucao de grid de tiles
+        const cols = Math.ceil(WORLD_WIDTH / TILE)
+        const rows = Math.ceil(WORLD_HEIGHT / TILE)
+
+        this.biomeBackground.clear()
+
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                const wx = col * TILE + TILE / 2
+                const wy = row * TILE + TILE / 2
+
+                // encontra celula Voronoi mais proxima 
+                let nearest = cells[]
+                let nearestDist = Infinity
+                for (const cell of cells) {
+                    const dx = cell.x - wx
+                    const dy = cell.y - wy
+                    const dist = dx * dx + dy * dy
+                    if (dist < nearestDist) {
+                        nearestDist = dist
+                        nearest = cell
+                    }
+                }
+
+                const color = BIOME_COLORS[nearest.type] ?? 0x2d4a1e
+                this.biomeBackground.beginFill(color, 0.85)
+                this.biomeBackground.drawRect(col * TILE, row * TILE, TILE, TILE)
+                this.biomeBackground.endFill()
+            }
+        }
     }
 
     setOnFollowChange(cb: (id: number | null) => void): void {
