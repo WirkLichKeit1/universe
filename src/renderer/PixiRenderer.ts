@@ -95,7 +95,7 @@ export class PixiRenderer {
                 const wy = row * TILE + TILE / 2
 
                 // encontra celula Voronoi mais proxima 
-                let nearest = cells[]
+                let nearest = cells[0]
                 let nearestDist = Infinity
                 for (const cell of cells) {
                     const dx = cell.x - wx
