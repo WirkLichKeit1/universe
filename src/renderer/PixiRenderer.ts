@@ -5,11 +5,8 @@ export interface EntityData {
     x: number
     y: number
     energy: number
-    dna: {
-        speed: number
-        visionRadius: number
-        reproductionThreshold: number
-    } | null
+    dna: { speed: number; visionRadius: number; reproductionThreshold: number } | null
+    identity: { name: string; age: number; maxAge: number } | null
 }
 
 export interface FoodData {
@@ -289,7 +286,7 @@ export class PixiRenderer {
         return (fr << 16) | (fg << 8) | fb
     }
 
-    private buildEntitySprite(energy: number, dna: EntityData["dna"]): PIXI.Container {
+    private buildEntitySprite(energy: number, dna: EntityData["dna"], identity: EntityData["identity"]): PIXI.Container {
         const container = new PIXI.Container()
         const color = this.getDNAColor(dna, energy)
         const dark = 0x0a0a0f
@@ -338,6 +335,20 @@ export class PixiRenderer {
         container.addChild(barBg)
         container.addChild(barFill)
 
+        // nome da criatura
+        if (dna && identity) {
+            const nameText = new PIXI.Text(identity.name, {
+                fontFamily: "monospace",
+                fontSize: 18,
+                fill: 0xffffff,
+            })
+            nameText.alpha = 0.7
+            nameText.anchor.set(0.5, 1)
+            nameText.x = 0
+            nameText.y = -34
+            container.addChild(nameText)
+        }
+
         return container
     }
 
@@ -382,7 +393,7 @@ export class PixiRenderer {
                 // reconstrói o sprite se a energia mudou o suficiente
                 if (energyChanged) {
                     this.worldContainer.removeChild(container)
-                    const newContainer = this.buildEntitySprite(e.energy, e.dna)
+                    const newContainer = this.buildEntitySprite(e.energy, e.dna, e.identity)
                     newContainer.x = e.x
                     newContainer.y = e.y
                     this.worldContainer.addChild(newContainer)
@@ -390,7 +401,7 @@ export class PixiRenderer {
                     this.entityEnergy.set(e.id, e.energy)
                 }
             } else {
-                const container = this.buildEntitySprite(e.energy, e.dna)
+                const container = this.buildEntitySprite(e.energy, e.dna, e.identity)
                 container.x = e.x
                 container.y = e.y
                 this.worldContainer.addChild(container)

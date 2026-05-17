@@ -61,6 +61,8 @@ export default function App() {
         if (!rendererRef.current) return { x: 0, y: 0, w: 25600, h: 19200 }
         return rendererRef.current.getCameraRect()
     }
+
+    const followedEntity = worldState?.entities.find(e => e.id === followingId)
     
     return (
         <>
@@ -92,8 +94,8 @@ export default function App() {
                     gap: 12,
                     alignItems: "center",
                 }}>
-                    <span style={{ color: "rgba(255,255,255,0.5" }}>Seguindo criatura</span>
-                    <span>#{followingId}</span>
+                    <span style={{ color: "rgba(255,255,255,0.5" }}>Seguindo</span>
+                    <span>{followedEntity?.identity?.name ?? `#${followingId}`}</span>
                     <button
                         onClick={() => rendererRef.current?.followCreature(null)}
                         style={{
