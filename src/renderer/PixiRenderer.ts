@@ -5,8 +5,22 @@ export interface EntityData {
     x: number
     y: number
     energy: number
-    dna: { speed: number; visionRadius: number; reproductionThreshold: number } | null
+    dna: { speed: number; visionRadius: number; reproductionThreshold: number; gatheringTendency: number } | null
     identity: { name: string; age: number; maxAge: number } | null
+    tribeId: number | null
+}
+
+export interface TribeData {
+    id: number
+    name: string
+    color: number
+    centerX: number
+    centerY: number
+    radius: number
+    foodStock: number
+    maxFoodStock: number
+    memberCount: number
+    inCrisis: boolean
 }
 
 export interface FoodData {
@@ -19,6 +33,7 @@ export interface WorldState {
     entities: EntityData[]
     food: FoodData[]
     reproductionEvents: { x: number; y: number }[]
+    tribes: TribeData[]
 }
 
 export interface BiomeCell {
@@ -54,6 +69,7 @@ export class PixiRenderer {
     private followingId: number | null = null
     private onFollowChange?: (id: number | null) => void
     private biomeBackground: PIXI.Graphics = new PIXI.Graphics()
+    private tribeColors: Map<number, number> = new Map()
 
     constructor(canvas: HTMLCanvasElement) {
         this.app = new PIXI.Application({
@@ -286,7 +302,7 @@ export class PixiRenderer {
         return (fr << 16) | (fg << 8) | fb
     }
 
-    private buildEntitySprite(energy: number, dna: EntityData["dna"], identity: EntityData["identity"]): PIXI.Container {
+    private buildEntitySprite(energy: number, dna: EntityData["dna"], identity: EntityData["identity"], tribeColor: number | null): PIXI.Container {
         const container = new PIXI.Container()
         const color = this.getDNAColor(dna, energy)
         const dark = 0x0a0a0f
@@ -349,6 +365,16 @@ export class PixiRenderer {
             container.addChild(nameText)
         }
 
+        if (tribeColor !== null) {
+            const mark = new PIXI.Graphics()
+            mark.beginFill(tribeColor, 0.9)
+            mark.drawCircle(0, 0, 5)
+            mark.endFill()
+            mark.x = 12
+            mark.y = -28
+            container.addChild(mark)
+        }
+
         return container
     }
 
@@ -381,9 +407,14 @@ export class PixiRenderer {
             }
         })
 
+        state.tribes?.forEach(t => {
+            this.tribeColors.set(t.id, t.color)
+        })
+
         state.entities.forEach(e => {
             const prevEnergy = this.entityEnergy.get(e.id)
             const energyChanged = prevEnergy === undefined || Math.abs(prevEnergy - e.energy) > 2
+            const tribeColor = e.tribeId !== null ? (this.tribeColors.get(e.tribeId) ?? null) : null
 
             if (this.entitySprites.has(e.id)) {
                 const container = this.entitySprites.get(e.id)!
@@ -393,7 +424,7 @@ export class PixiRenderer {
                 // reconstrói o sprite se a energia mudou o suficiente
                 if (energyChanged) {
                     this.worldContainer.removeChild(container)
-                    const newContainer = this.buildEntitySprite(e.energy, e.dna, e.identity)
+                    const newContainer = this.buildEntitySprite(e.energy, e.dna, e.identity, tribeColor)
                     newContainer.x = e.x
                     newContainer.y = e.y
                     this.worldContainer.addChild(newContainer)
@@ -401,7 +432,7 @@ export class PixiRenderer {
                     this.entityEnergy.set(e.id, e.energy)
                 }
             } else {
-                const container = this.buildEntitySprite(e.energy, e.dna, e.identity)
+                const container = this.buildEntitySprite(e.energy, e.dna, e.identity, tribeColor)
                 container.x = e.x
                 container.y = e.y
                 this.worldContainer.addChild(container)

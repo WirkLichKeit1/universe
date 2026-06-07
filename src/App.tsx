@@ -75,6 +75,7 @@ export default function App() {
                 state={worldState}
                 fertileRegions={fertileRegions}
                 cameraRect={getCameraRect()}
+                tribes={worldState?.tribes ?? []}
             />
             
             {followingId !== null && (

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { WorldState } from "../renderer/PixiRenderer"
+import { WorldState, TribeData } from "../renderer/PixiRenderer"
 
 const WORLD_WIDTH = 25600
 const WORLD_HEIGHT = 19200
@@ -10,28 +10,27 @@ interface Props {
     state: WorldState | null
     fertileRegions: { x: number; y: number }[]
     cameraRect: { x: number; y: number; w: number; h: number }
+    tribes: TribeData[]
 }
 
-export default function MinimalPanel({ state, fertileRegions, cameraRect }: Props) {
+export default function MinimapPanel({ state, fertileRegions, cameraRect, tribes }: Props) {
     const [open, setOpen] = useState(true)
-    const [show, setShow] = useState({ creatures: true, food: true, fertile: true })
+    const [show, setShow] = useState({ creatures: true, food: true, fertile: true, tribes: true })
     const canvasRef = useRef<HTMLCanvasElement>(null)
 
     useEffect(() => {
         const canvas = canvasRef.current
         if (!canvas) return
-        
+
         const ctx = canvas.getContext("2d")!
         ctx.clearRect(0, 0, MAP_WIDTH, MAP_HEIGHT)
 
         const scaleX = MAP_WIDTH / WORLD_WIDTH
         const scaleY = MAP_HEIGHT / WORLD_HEIGHT
 
-        // fundo
         ctx.fillStyle = "#0a0a0f"
         ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT)
 
-        // regiões férteis
         if (show.fertile) {
             fertileRegions.forEach(r => {
                 const grd = ctx.createRadialGradient(
@@ -45,7 +44,29 @@ export default function MinimalPanel({ state, fertileRegions, cameraRect }: Prop
             })
         }
 
-        // comida
+        if (show.tribes) {
+            tribes.forEach((t: TribeData) => {
+                const tx = t.centerX * scaleX
+                const ty = t.centerY * scaleY
+                const tr = t.radius * scaleX
+
+                const r = (t.color >> 16) & 0xff
+                const g = (t.color >> 8) & 0xff
+                const b = t.color & 0xff
+
+                const grd = ctx.createRadialGradient(tx, ty, 0, tx, ty, tr)
+                grd.addColorStop(0, `rgba(${r},${g},${b},0.25)`)
+                grd.addColorStop(1, `rgba(${r},${g},${b},0)`)
+                ctx.fillStyle = grd
+                ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT)
+
+                ctx.beginPath()
+                ctx.arc(tx, ty, 2, 0, Math.PI * 2)
+                ctx.fillStyle = `rgb(${r},${g},${b})`
+                ctx.fill()
+            })
+        }
+
         if (show.food && state?.food) {
             ctx.fillStyle = "rgba(68, 255, 136, 0.6)"
             state.food.forEach(f => {
@@ -53,15 +74,16 @@ export default function MinimalPanel({ state, fertileRegions, cameraRect }: Prop
             })
         }
 
-        // criaturas
         if (show.creatures && state?.entities) {
             state.entities.forEach(e => {
-                ctx.fillStyle = "rgba(255, 255, 255, 0.9)"
+                const color = e.tribeId !== null
+                    ? `rgba(255,255,255,0.9)`
+                    : `rgba(255,255,255,0.5)`
+                ctx.fillStyle = color
                 ctx.fillRect(e.x * scaleX - 1, e.y * scaleY - 1, 2, 2)
             })
         }
 
-        // retângulo da câmera
         ctx.strokeStyle = "rgba(255, 255, 255, 0.5)"
         ctx.lineWidth = 1
         ctx.strokeRect(
@@ -70,7 +92,7 @@ export default function MinimalPanel({ state, fertileRegions, cameraRect }: Prop
             cameraRect.w * scaleX,
             cameraRect.h * scaleY
         )
-    }, [state, fertileRegions, show, cameraRect])
+    }, [state, fertileRegions, show, cameraRect, tribes])
 
     return (
         <div style={{
@@ -100,7 +122,7 @@ export default function MinimalPanel({ state, fertileRegions, cameraRect }: Prop
                 {open ? "↑ mapa" : "↓ mapa"}
             </button>
 
-            { open && (
+            {open && (
                 <div style={{
                     background: "rgba(10,10,20,0.85)",
                     border: "1px solid rgba(255,255,255,0.15)",
@@ -114,10 +136,10 @@ export default function MinimalPanel({ state, fertileRegions, cameraRect }: Prop
                         ref={canvasRef}
                         width={MAP_WIDTH}
                         height={MAP_HEIGHT}
-                        style={{ borderRadius: 4, border: "1px solid rgba(255,255,255,0.08)"}}
+                        style={{ borderRadius: 4, border: "1px solid rgba(255,255,255,0.08)" }}
                     />
                     <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-                        {(["creatures", "food", "fertile"] as const).map(key => (
+                        {(["creatures", "food", "fertile", "tribes"] as const).map(key => (
                             <label key={key} style={{
                                 color: "rgba(255,255,255,0.6)",
                                 fontSize: 11,
@@ -132,7 +154,7 @@ export default function MinimalPanel({ state, fertileRegions, cameraRect }: Prop
                                     onChange={() => setShow(s => ({ ...s, [key]: !s[key] }))}
                                     style={{ cursor: "pointer" }}
                                 />
-                                {key === "creatures" ? "criaturas" : key === "food" ? "comida" : "férteis"}
+                                {key === "creatures" ? "criaturas" : key === "food" ? "comida" : key === "fertile" ? "férteis" : "tribos"}
                             </label>
                         ))}
                     </div>
